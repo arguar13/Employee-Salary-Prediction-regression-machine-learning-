@@ -59,6 +59,9 @@ El proyecto sigue un flujo de trabajo riguroso y profesional de ciencia de datos
 7. **Evaluación Final**
    - Evaluación del mejor modelo sobre datos de prueba no vistos para garantizar su capacidad de generalización.
 
+8. **Análisis de Errores e Interpretabilidad**
+   - Desglose de errores por segmento y medición de qué variables impulsan las predicciones (importancia por permutación).
+
 ---
 
 # Preprocesamiento e Ingeniería de Características
@@ -101,6 +104,7 @@ La arquitectura evalúa dinámicamente algoritmos de regresión de alto rendimie
 
 ## Algoritmos Evaluados
 
+- Línea base ingenua (`DummyRegressor`, predice siempre el salario medio): el piso que todo modelo debe superar
 - Ridge Regression
 - Random Forest Regressor
 - Gradient Boosting Regressor
@@ -121,15 +125,37 @@ El modelo final se reentrena sobre Train + Validation con los mejores parámetro
 
 # Resultados
 
-| Modelo (benchmark en validación) | R² | RMSE |
-|---|---|---|
-| LightGBM | 0.9785 | 5.460 |
-| XGBoost | 0.9782 | 5.494 |
-| Random Forest | 0.9707 | 6.378 |
-| Ridge Regression | 0.9630 | 7.163 |
-| Gradient Boosting | 0.9546 | 7.938 |
+### Benchmark en validación
 
-**LightGBM optimizado sobre Test:** R² = **0,9807**, RMSE = **5.176**, MAE = **4.129** (salario medio ≈ 145.700).
+| Modelo | R² | RMSE | MAE |
+|---|---|---|---|
+| LightGBM | 0,9785 | 5.460 | 4.350 |
+| XGBoost | 0,9782 | 5.494 | 4.375 |
+| Random Forest | 0,9707 | 6.378 | 5.054 |
+| Ridge Regression | 0,9630 | 7.163 | 5.486 |
+| Gradient Boosting | 0,9546 | 7.938 | 6.231 |
+| Línea base (media) | 0,0000 | 37.243 | 29.687 |
+
+Optuna elevó el R² de validación de LightGBM de 0,9785 a 0,9803.
+
+### Conjunto de Test (50.000 registros no vistos)
+
+| Modelo | MAE | RMSE | R² | MAPE | Predicciones dentro de ±10% |
+|---|---|---|---|---|---|
+| LightGBM optimizado | 4.129 | 5.176 | 0,9807 | 3,04% | 98,1% |
+| Línea base (media) | 29.695 | 37.281 | 0,0000 | 22,66% | 30,6% |
+
+### Análisis de errores
+
+El error absoluto es casi constante entre segmentos (MAE ≈ 4.000–4.260), por lo que el error **relativo** es mayor donde los salarios son más bajos: el MAPE es 2,4% en USA frente a 4,5% en India, 2,6% para AI Engineers frente a 3,8% para Data/Business Analysts, y 2,1% en el quintil salarial superior frente a 4,4% en el inferior.
+
+### Qué impulsa las predicciones
+
+Importancia por permutación (aumento del MAE al desordenar una variable, muestra de test de 10.000): `location` (+18.777), `experience_years` (+15.239), `company_size` (+13.646), `job_title` (+13.489) y `education_level` (+9.603) dominan; `skills_count`, `certifications` y `remote_work` aportan poco, e `industry` prácticamente no tiene efecto (+2).
+
+### Limitaciones
+
+El dataset muestra rasgos típicos de datos sintéticos (proporciones de categorías casi uniformes, sin valores faltantes, sin efecto de la industria), lo que explica el R² tan alto. El pipeline está diseñado para trasladarse a datos reales de compensación, pero las métricas no deben leerse como precisión salarial en el mundo real.
 
 ---
 
@@ -166,7 +192,7 @@ El notebook genera gráficos de diagnóstico para evaluar la integridad de los d
 
 # Licencia
 
-Proyecto educativo de Machine Learning que utiliza un dataset de Kaggle con fines académicos.
+Proyecto educativo de Machine Learning con fines académicos. Dataset: [Job Salary Prediction Dataset](https://www.kaggle.com/datasets/nalisha/job-salary-prediction-dataset) de nalisha en Kaggle.
 
 ---
 
