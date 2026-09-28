@@ -15,7 +15,7 @@ The objective is to build a scalable and production-ready salary estimation syst
 | **Target Variable** | `salary` |
 | **File Type** | CSV |
 | **Volume** | 250,000 records |
-| **Attributes** | 10 features |
+| **Attributes** | 9 features + 1 target |
 
 The dataset contains comprehensive employee profile and job information. The features utilized in this analysis include:
 
@@ -23,12 +23,12 @@ The dataset contains comprehensive employee profile and job information. The fea
 |----------|-------------|
 | `job_title` | The professional designation of the employee. |
 | `experience_years` | Years of professional experience. |
-| `education_level` | Highest educational degree attained (e.g., Bachelor, Master, PhD). |
+| `education_level` | Highest educational degree attained (High School, Diploma, Bachelor, Master, PhD). |
 | `skills_count` | Total number of documented technical or professional skills. |
 | `industry` | The sector in which the company operates. |
-| `company_size` | Categorization of the organization's employee count or revenue. |
+| `company_size` | Organization size (Startup, Small, Medium, Large, Enterprise). |
 | `location` | Geographical location of the role. |
-| `remote_work` | Modality of work (e.g., Yes, No, Hybrid). |
+| `remote_work` | Modality of work (Yes, No, Hybrid). |
 | `certifications` | Number of professional certifications held. |
 
 ---
@@ -44,13 +44,13 @@ The project follows a rigorous, professional data science workflow:
    - Statistical analysis of the target variable and categorical relationships.
 
 3. **Data Splitting**
-   - Implementation of a strict Train/Validation/Test split strategy
+   - Strict Train/Validation/Test split (64% / 16% / 20%).
 
 4. **Custom Transformers and Preprocessing**
    - Modular pipeline construction utilizing custom scikit-learn classes.
 
 5. **Dynamic Model Benchmarking**
-   - Cross-evaluating multiple algorithms to establish the strongest baseline.
+   - Comparing multiple algorithms on the hold-out validation set to establish the strongest baseline.
 
 6. **Hyperparameter Tuning**
    - Automated search space exploration using Optuna.
@@ -65,6 +65,10 @@ The project follows a rigorous, professional data science workflow:
 The pipeline is fully modularized utilizing `scikit-learn Pipelines` and `ColumnTransformer`.
 
 Custom `BaseEstimator` and `TransformerMixin` classes were developed to handle specific domain requirements.
+
+## Feature Engineering
+
+- Custom `FeatureEngineer` adding ordinal ranks for `education_level` and `company_size`, so the natural ordering of these categories is available to the models alongside their one-hot encoding.
 
 ## Numerical Pipeline
 
@@ -106,22 +110,42 @@ The architecture dynamically evaluates top-tier regression algorithms on the val
 
 # Hyperparameter Tuning (Optuna)
 
-Based on the validation benchmarking, **XGBoost** was selected as the optimal algorithm.
+The best model from the validation benchmark is selected automatically and injected into an **Optuna** study (TPE sampler, fixed seed) that maximizes the validation **R-squared (R²)** score. Each algorithm has its own search space (e.g. `n_estimators`, `learning_rate`, `max_depth`, `num_leaves`, `subsample`).
 
-An automated hyperparameter optimization process was conducted using **Optuna** to maximize the **R-squared (R²)** score.
+In the current run **LightGBM** (validation R² 0.9785) narrowly beat **XGBoost** (0.9782) and was selected for tuning.
 
-### Tuned Parameters
+The final model is retrained on Train + Validation with the best parameters and evaluated once on the untouched Test set.
 
-- `n_estimators`
-- `learning_rate`
-- `max_depth`
-- `subsample`
+---
+
+# Results
+
+| Model (validation benchmark) | R² | RMSE |
+|---|---|---|
+| LightGBM | 0.9785 | 5,460 |
+| XGBoost | 0.9782 | 5,494 |
+| Random Forest | 0.9707 | 6,378 |
+| Ridge Regression | 0.9630 | 7,163 |
+| Gradient Boosting | 0.9546 | 7,938 |
+
+**Final tuned LightGBM on the Test set:** R² = **0.9807**, RMSE = **5,176**, MAE = **4,129** (mean salary ≈ 145,700).
+
+---
+
+# How to Run
+
+```bash
+pip install -r requirements.txt
+jupyter notebook "notebooks/Employee Salary Prediction.ipynb"
+```
+
+The notebook resolves the dataset path relative to the project, so it runs from the project root or from the `notebooks/` folder.
 
 ---
 
 # Visualizations and Diagnostics
 
-The repository generates automated diagnostic plots to assess data integrity and model performance
+The notebook generates diagnostic plots to assess data integrity and model performance: target distribution, salary by categorical feature, benchmark comparison, actual vs. predicted and residual distribution.
 
 ---
 

@@ -16,7 +16,7 @@ El objetivo es construir un sistema escalable y preparado para producción para 
 | **Variable Objetivo** | `salary` |
 | **Tipo de Archivo** | CSV |
 | **Volumen** | 250.000 registros |
-| **Atributos** | 10 características |
+| **Atributos** | 9 características + 1 variable objetivo |
 
 El conjunto de datos contiene información completa sobre perfiles de empleados y características laborales. Las variables utilizadas en este análisis incluyen:
 
@@ -24,12 +24,12 @@ El conjunto de datos contiene información completa sobre perfiles de empleados 
 |----------|-------------|
 | `job_title` | Cargo o puesto profesional del empleado. |
 | `experience_years` | Años de experiencia profesional. |
-| `education_level` | Nivel educativo más alto alcanzado (por ejemplo, Licenciatura, Maestría, Doctorado). |
+| `education_level` | Nivel educativo más alto alcanzado (High School, Diploma, Bachelor, Master, PhD). |
 | `skills_count` | Número total de habilidades técnicas o profesionales documentadas. |
 | `industry` | Sector en el que opera la empresa. |
-| `company_size` | Clasificación del tamaño de la organización según cantidad de empleados o ingresos. |
+| `company_size` | Tamaño de la organización (Startup, Small, Medium, Large, Enterprise). |
 | `location` | Ubicación geográfica del puesto. |
-| `remote_work` | Modalidad de trabajo (por ejemplo, Sí, No, Híbrido). |
+| `remote_work` | Modalidad de trabajo (Yes, No, Hybrid). |
 | `certifications` | Número de certificaciones profesionales obtenidas. |
 
 ---
@@ -45,13 +45,13 @@ El proyecto sigue un flujo de trabajo riguroso y profesional de ciencia de datos
    - Análisis estadístico de la variable objetivo y de las relaciones entre variables categóricas.
 
 3. **División de los Datos**
-   - Implementación de una estrategia estricta de separación en Train/Validation/Test.
+   - Separación estricta en Train/Validation/Test (64% / 16% / 20%).
 
 4. **Transformadores Personalizados y Preprocesamiento**
    - Construcción de un pipeline modular utilizando clases personalizadas de scikit-learn.
 
 5. **Benchmarking Dinámico de Modelos**
-   - Evaluación cruzada de múltiples algoritmos para establecer la mejor línea base.
+   - Comparación de múltiples algoritmos sobre el conjunto de validación para establecer la mejor línea base.
 
 6. **Optimización de Hiperparámetros**
    - Exploración automatizada del espacio de búsqueda utilizando Optuna.
@@ -66,6 +66,10 @@ El proyecto sigue un flujo de trabajo riguroso y profesional de ciencia de datos
 El pipeline está completamente modularizado utilizando `scikit-learn Pipelines` y `ColumnTransformer`.
 
 Se desarrollaron clases personalizadas basadas en `BaseEstimator` y `TransformerMixin` para abordar requisitos específicos del dominio.
+
+## Ingeniería de Características
+
+- Transformador personalizado `FeatureEngineer` que agrega rangos ordinales para `education_level` y `company_size`, de modo que el orden natural de estas categorías esté disponible para los modelos junto con su codificación one-hot.
 
 ## Pipeline Numérico
 
@@ -107,22 +111,42 @@ La arquitectura evalúa dinámicamente algoritmos de regresión de alto rendimie
 
 # Optimización de Hiperparámetros (Optuna)
 
-Basándose en los resultados del benchmarking sobre validación, **XGBoost** fue seleccionado como el algoritmo óptimo.
+El mejor modelo del benchmarking sobre validación se selecciona automáticamente y se optimiza con un estudio de **Optuna** (sampler TPE con semilla fija) que maximiza la métrica **R-cuadrado (R²)** en validación. Cada algoritmo tiene su propio espacio de búsqueda (por ejemplo `n_estimators`, `learning_rate`, `max_depth`, `num_leaves`, `subsample`).
 
-Se llevó a cabo un proceso automatizado de optimización de hiperparámetros utilizando **Optuna** para maximizar la métrica **R-cuadrado (R²)**.
+En la ejecución actual **LightGBM** (R² de validación 0.9785) superó por muy poco a **XGBoost** (0.9782) y fue seleccionado para la optimización.
 
-### Parámetros Optimizados
+El modelo final se reentrena sobre Train + Validation con los mejores parámetros y se evalúa una única vez sobre el conjunto de Test.
 
-- `n_estimators`
-- `learning_rate`
-- `max_depth`
-- `subsample`
+---
+
+# Resultados
+
+| Modelo (benchmark en validación) | R² | RMSE |
+|---|---|---|
+| LightGBM | 0.9785 | 5.460 |
+| XGBoost | 0.9782 | 5.494 |
+| Random Forest | 0.9707 | 6.378 |
+| Ridge Regression | 0.9630 | 7.163 |
+| Gradient Boosting | 0.9546 | 7.938 |
+
+**LightGBM optimizado sobre Test:** R² = **0,9807**, RMSE = **5.176**, MAE = **4.129** (salario medio ≈ 145.700).
+
+---
+
+# Cómo Ejecutarlo
+
+```bash
+pip install -r requirements.txt
+jupyter notebook "notebooks/Employee Salary Prediction.ipynb"
+```
+
+El notebook resuelve la ruta del dataset de forma relativa al proyecto, por lo que funciona desde la raíz o desde la carpeta `notebooks/`.
 
 ---
 
 # Visualizaciones y Diagnósticos
 
-El repositorio genera gráficos de diagnóstico automatizados para evaluar la integridad de los datos y el rendimiento del modelo.
+El notebook genera gráficos de diagnóstico para evaluar la integridad de los datos y el rendimiento del modelo: distribución de la variable objetivo, salario por variable categórica, comparación del benchmark, valores reales vs. predichos y distribución de residuos.
 
 ---
 
